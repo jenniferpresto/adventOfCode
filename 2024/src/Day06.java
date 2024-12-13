@@ -3,8 +3,11 @@ package src;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Scanner;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class Day06 {
@@ -38,9 +41,39 @@ public class Day06 {
         }
     }
 
+    public static class Position {
+        public int x;
+        public int y;
+        Position(int x, int y) {
+            this.x = x;
+            this.y = y;
+        }
+
+        @Override
+        public String toString() {
+            return "Position{" +
+                    "x=" + x +
+                    ", y=" + y +
+                    '}';
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Position position = (Position) o;
+            return x == position.x && y == position.y;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(x, y);
+        }
+    }
+
     public static void main(String[] args) {
         List<String> data = new ArrayList<>();
-        try (final Scanner scanner = new Scanner(new File("data/day06test.txt"))) {
+        try (final Scanner scanner = new Scanner(new File("data/day06.txt"))) {
             while (scanner.hasNext()) {
                 data.add(scanner.nextLine());
             }
@@ -49,29 +82,41 @@ public class Day06 {
             throw new RuntimeException(e);
         }
 
-        final char[][] labMap = new char[data.get(0).length()][data.size()];
-        AtomicInteger xPos = new AtomicInteger(0);
-        AtomicInteger yPos = new AtomicInteger(0);
+        final char[][] labMap = new char[data.getFirst().length()][data.size()];
         DirectionPointer dir = new DirectionPointer();
 
-        for (int x = 0; x < data.get(0).length(); x++) {
+        List<List<Set<Character>>> history = new ArrayList<>();
+
+        int startX = 0;
+        int startY = 0;
+
+        for (int x = 0; x < data.getFirst().length(); x++) {
+            List<Set<Character>> xList = new ArrayList<>();
+            history.add(xList);
             for (int y = 0; y < data.size(); y++) {
+                Set<Character> ySet = new HashSet<>();
+                xList.add(ySet);
                 labMap[x][y] = data.get(y).charAt(x);
                 if (labMap[x][y] == '^') {
-                    xPos.set(x);
-                    yPos.set(y);
-//                    labMap[x][y] = 'X';
+                    startX = x;
+                    startY = y;
                 }
             }
         }
 
-        boolean isMoving = true;
-        AtomicInteger numCrossovers = new AtomicInteger(0);
-        while (isMoving) {
-            isMoving = moveOne(labMap, xPos, yPos, dir, numCrossovers);
+        final Position guardPos = new Position(startX, startY);
+        history.get(startX).get(startY).add('U');
+
+        String isMoving = "move";
+
+        //  Part 1
+        AtomicInteger numMovesPt1 = new AtomicInteger(1);
+        while (isMoving.equals("move")) {
+            isMoving = moveOne(labMap, guardPos, dir, history,  numMovesPt1);
         }
 
         int totalPart1 = 0;
+
         for (int x = 0; x < data.getFirst().length(); x++) {
             for (int y = 0; y < data.size(); y++) {
                 if (labMap[x][y] != '#' && labMap[x][y] != '.') {
@@ -81,8 +126,39 @@ public class Day06 {
         }
 
         printLabMap(labMap);
-        System.out.println("Part 1: " + totalPart1);
-        System.out.println("Part 2: " + numCrossovers.get());
+        System.out.println("Part 1: " + numMovesPt1.get());
+        System.out.println("Part 1b: " + totalPart1);
+
+
+        //  Part 2
+        int numPossibleObstacles = 0;
+        clearLabMap(labMap, data);
+        clearHistory(history);
+        AtomicInteger numMovesPt2 = new AtomicInteger(1);
+        for (int x = 0; x < labMap[0].length; x++) {
+            for (int y = 0; y < labMap.length; y++) {
+                if (labMap[x][y] == '#' || labMap[x][y] == '^') {
+                    continue;
+                }
+                guardPos.x = startX;
+                guardPos.y = startY;
+                dir.direction = Directions.UP;
+
+                labMap[x][y] = '#';
+
+                String moveStatus = "move";
+                while (moveStatus.equals("move")) {
+                    moveStatus = moveOne(labMap, guardPos, dir, history, numMovesPt2);
+                }
+                if (moveStatus.equals("loop")) {
+                    numPossibleObstacles++;
+//                    printLabMap(labMap);
+                }
+                clearLabMap(labMap, data);
+                clearHistory(history);
+            }
+        }
+        System.out.println("Part 2: number of possible obstacles: " + numPossibleObstacles);
     }
 
     public static boolean isOnMap(char [][] labMap, int xPos, int yPos) {
@@ -98,9 +174,9 @@ public class Day06 {
         };
     }
 
-    public static boolean moveOne(char[][] labMap, AtomicInteger xPos, AtomicInteger yPos, DirectionPointer dir, AtomicInteger numCrossovers) {
-        int newX = xPos.get();
-        int newY = yPos.get();
+    public static String moveOne(char[][] labMap, Position pos, DirectionPointer dir, List<List<Set<Character>>> history, AtomicInteger numMoves) {
+        int newX = pos.x;
+        int newY = pos.y;
 
         switch (dir.direction) {
             case Directions.UP:
@@ -116,50 +192,28 @@ public class Day06 {
                 newX--;
                 break;
         }
-        if (!isOnMap(labMap, newX, newY)) {
-            return false;
-        }
-        switch (labMap[newX][newY]) {
-            case'#':
-                setNewDir(dir);
-                break;
-            case '.':
-            case 'X':
-                xPos.set(newX);
-                yPos.set(newY);
-                labMap[newX][newY] = dir.getDirectionChar();
-                break;
-            case 'U':
-            case 'D':
-            case 'L':
-            case 'R':
-                xPos.set(newX);
-                yPos.set(newY);
-                if (dir.getNextDirectionChar() == labMap[newX][newY] && !isOnEdgeOfMapForDirection(labMap, newX, newY, dir)) {
-                    labMap[newX][newY] = 'X';
-                    numCrossovers.getAndIncrement();
-                } else {
-                    labMap[newX][newY] = dir.getDirectionChar();
-                }
-                break;
-            case '^':
-                xPos.set(newX);
-                yPos.set(newY);
-                break;
-            default:
-                System.out.println("Shouldn't hit this");
 
+        if (!isOnMap(labMap, newX, newY)) {
+            return "exit";
         }
-//        if (labMap[newX][newY] == '.' || labMap[newX][newY] == 'X' || labMap[newX][newY] == '^') {
-//            xPos.set(newX);
-//            yPos.set(newY);
-//            labMap[newX][newY] = 'X';
-//        } else if (labMap[newX][newY] == '#') {
-//            setNewDir(dir);
-//        } else {
-//            System.out.println("Something's gone wrong");
-//        }
-        return true;
+
+        if (labMap[newX][newY] != '#') {
+            pos.x = newX;
+            pos.y = newY;
+            if(history.get(newX).get(newY).contains(dir.getDirectionChar())) {
+                return "loop";
+            }
+            history.get(newX).get(newY).add(dir.getDirectionChar());
+            if (labMap[newX][newY] == '.') {
+                numMoves.getAndIncrement();
+            }
+            labMap[newX][newY] = dir.getDirectionChar();
+        } else if (labMap[newX][newY] == '#') {
+            setNewDir(dir);
+        } else {
+            System.out.println("Something's gone wrong");
+        }
+        return "move";
     }
 
     public static void printLabMap(char[][] labMap) {
@@ -187,6 +241,22 @@ public class Day06 {
             default:
                 dir.setDirection(Directions.UP);
                 break;
+        }
+    }
+
+    public static void clearHistory(List<List<Set<Character>>> history) {
+        for (List<Set<Character>> row : history) {
+            for (Set<Character> set : row) {
+                set.clear();
+            }
+        }
+    }
+
+    public static void clearLabMap(char[][] labMap, List<String> data) {
+        for (int x = 0; x < data.getFirst().length(); x++) {
+            for (int y = 0; y < data.size(); y++) {
+                labMap[x][y] = data.get(y).charAt(x);
+            }
         }
     }
 }
