@@ -18,11 +18,29 @@ public class Day06 {
         public void setDirection(Directions dir) {
             direction = dir;
         }
+
+        public char getDirectionChar() {
+            return switch (direction) {
+                case Directions.UP -> 'U';
+                case Directions.RIGHT -> 'R';
+                case Directions.DOWN -> 'D';
+                default -> 'L';
+            };
+        }
+
+        public char getNextDirectionChar() {
+            return switch (direction) {
+                case Directions.UP -> 'R';
+                case Directions.RIGHT -> 'D';
+                case Directions.DOWN -> 'L';
+                default -> 'U';
+            };
+        }
     }
 
     public static void main(String[] args) {
         List<String> data = new ArrayList<>();
-        try (final Scanner scanner = new Scanner(new File("data/day06.txt"))) {
+        try (final Scanner scanner = new Scanner(new File("data/day06test.txt"))) {
             while (scanner.hasNext()) {
                 data.add(scanner.nextLine());
             }
@@ -42,21 +60,21 @@ public class Day06 {
                 if (labMap[x][y] == '^') {
                     xPos.set(x);
                     yPos.set(y);
-                    labMap[x][y] = 'X';
+//                    labMap[x][y] = 'X';
                 }
             }
         }
 
-        while (moveOne(labMap, xPos, yPos, dir)) {
-            // printLabMap(labMap);
-            //  noop
-
+        boolean isMoving = true;
+        AtomicInteger numCrossovers = new AtomicInteger(0);
+        while (isMoving) {
+            isMoving = moveOne(labMap, xPos, yPos, dir, numCrossovers);
         }
 
         int totalPart1 = 0;
         for (int x = 0; x < data.getFirst().length(); x++) {
             for (int y = 0; y < data.size(); y++) {
-                if (labMap[x][y] == 'X') {
+                if (labMap[x][y] != '#' && labMap[x][y] != '.') {
                     totalPart1++;
                 }
             }
@@ -64,13 +82,23 @@ public class Day06 {
 
         printLabMap(labMap);
         System.out.println("Part 1: " + totalPart1);
+        System.out.println("Part 2: " + numCrossovers.get());
     }
 
     public static boolean isOnMap(char [][] labMap, int xPos, int yPos) {
         return xPos >= 0 && xPos < labMap[0].length && yPos >= 0 && yPos < labMap.length;
     }
 
-    public static boolean moveOne(char[][] labMap, AtomicInteger xPos, AtomicInteger yPos, DirectionPointer dir) {
+    public static boolean isOnEdgeOfMapForDirection(char [][] labMap, int xPos, int yPos, DirectionPointer dir) {
+        return switch (dir.direction) {
+            case Directions.UP -> yPos == 0;
+            case Directions.RIGHT -> xPos == labMap[0].length - 1;
+            case Directions.DOWN -> yPos == labMap.length - 1;
+            case Directions.LEFT -> xPos == 0;
+        };
+    }
+
+    public static boolean moveOne(char[][] labMap, AtomicInteger xPos, AtomicInteger yPos, DirectionPointer dir, AtomicInteger numCrossovers) {
         int newX = xPos.get();
         int newY = yPos.get();
 
@@ -85,22 +113,52 @@ public class Day06 {
                 newY++;
                 break;
             case Directions.LEFT:
-            default:
                 newX--;
                 break;
         }
         if (!isOnMap(labMap, newX, newY)) {
             return false;
         }
-        if (labMap[newX][newY] == '.' || labMap[newX][newY] == 'X' || labMap[newX][newY] == '^') {
-            xPos.set(newX);
-            yPos.set(newY);
-            labMap[newX][newY] = 'X';
-        } else if (labMap[newX][newY] == '#') {
-            setNewDir(dir);
-        } else {
-            System.out.println("Something's gone wrong");
+        switch (labMap[newX][newY]) {
+            case'#':
+                setNewDir(dir);
+                break;
+            case '.':
+            case 'X':
+                xPos.set(newX);
+                yPos.set(newY);
+                labMap[newX][newY] = dir.getDirectionChar();
+                break;
+            case 'U':
+            case 'D':
+            case 'L':
+            case 'R':
+                xPos.set(newX);
+                yPos.set(newY);
+                if (dir.getNextDirectionChar() == labMap[newX][newY] && !isOnEdgeOfMapForDirection(labMap, newX, newY, dir)) {
+                    labMap[newX][newY] = 'X';
+                    numCrossovers.getAndIncrement();
+                } else {
+                    labMap[newX][newY] = dir.getDirectionChar();
+                }
+                break;
+            case '^':
+                xPos.set(newX);
+                yPos.set(newY);
+                break;
+            default:
+                System.out.println("Shouldn't hit this");
+
         }
+//        if (labMap[newX][newY] == '.' || labMap[newX][newY] == 'X' || labMap[newX][newY] == '^') {
+//            xPos.set(newX);
+//            yPos.set(newY);
+//            labMap[newX][newY] = 'X';
+//        } else if (labMap[newX][newY] == '#') {
+//            setNewDir(dir);
+//        } else {
+//            System.out.println("Something's gone wrong");
+//        }
         return true;
     }
 
