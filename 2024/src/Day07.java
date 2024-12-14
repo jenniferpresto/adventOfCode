@@ -35,7 +35,7 @@ public class Day07 {
 
     public static void main(String[] args) {
         List<String> data = new ArrayList<>();
-        try (final Scanner scanner = new Scanner(new File("data/day07test.txt"))) {
+        try (final Scanner scanner = new Scanner(new File("data/day07.txt"))) {
             while (scanner.hasNext()) {
                 data.add(scanner.nextLine());
             }
@@ -44,15 +44,22 @@ public class Day07 {
             throw new RuntimeException(e);
         }
 
-        Map<Long, List<Long>> testValues = new HashMap<>();
+        long start = System.currentTimeMillis();
+
+        long[] results = new long[data.size()];
+        List<List<Long>> valueLists = new ArrayList<>();
+
+        int idx = 0;
         for (String line : data) {
             String [] firstSplit = line.split(": ");
             String [] secondSplit = firstSplit[1].split(" ");
             List<Long> values = new ArrayList<>();
+            results[idx] = Long.parseLong(firstSplit[0]);
             for (String val : secondSplit) {
                 values.add(Long.parseLong(val));
             }
-            testValues.put(Long.parseLong(firstSplit[0]), values);
+            valueLists.add(values);
+            idx++;
         }
 
 
@@ -61,11 +68,12 @@ public class Day07 {
         long totalResult = 0L;
         long totalResultPartTwo = 0L;
 
-        for (Map.Entry<Long, List<Long>> entrySet : testValues.entrySet()) {
-            long result = entrySet.getKey();
-            List<Long> values = entrySet.getValue();
-            Node root = createTree(result, values);
+        for (int i = 0; i < results.length; i++) {
+            long result = results[i];
+            List<Long> values = valueLists.get(i);
 
+
+            Node root = createTree(result, values);
             if(treeIsValid(root, result, values.size() - 1)) {
                 totalResult += result;
             }
@@ -78,11 +86,8 @@ public class Day07 {
 
         System.out.println("Part 1: Total valid result: " + totalResult);
         System.out.println("Part 2: Total valid result part 2: " + totalResultPartTwo);
-
-
-//        Node root = createTreePartTwo(7290L, testValues.get(7290L));
-//        boolean isValue = treeIsValidPartTwo(root, 7290L);
-//        int jennifer = 9;
+        long end = System.currentTimeMillis();
+        System.out.println("Time: " + (end - start) + " ms");
     }
 
     /**
@@ -153,6 +158,8 @@ public class Day07 {
         if (concatNode.val <= result) {
             root.concat = concatNode;
             createLowerRungsPartTwo(root.concat, result, values, idxToUse + 1);
+        } else {
+            int jennifer = 9;
         }
     }
 
