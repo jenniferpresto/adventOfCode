@@ -3,9 +3,7 @@ package src;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Scanner;
 
 public class Day07 {
@@ -65,33 +63,30 @@ public class Day07 {
 
         //  Part 1 -- Tree and depth-first traversal
         //  Part 2 -- Tree with third possibility
-        long totalResult = 0L;
+        long totalResultPartOne = 0L;
         long totalResultPartTwo = 0L;
 
         for (int i = 0; i < results.length; i++) {
             long result = results[i];
             List<Long> values = valueLists.get(i);
 
-
-            Node root = createTree(result, values);
-            if(treeIsValid(root, result, values.size() - 1)) {
-                totalResult += result;
+            Node rootPartTwo = createTree(result, values);
+            if (treeIsValid(rootPartTwo, result, false)) {
+                totalResultPartOne += result;
             }
-
-            Node rootPartTwo = createTreePartTwo(result, values);
-            if (treeIsValidPartTwo(rootPartTwo, result)) {
+            if (treeIsValid(rootPartTwo, result, true)) {
                 totalResultPartTwo += result;
             }
         }
 
-        System.out.println("Part 1: Total valid result: " + totalResult);
+        System.out.println("Part 1: Total valid result: " + totalResultPartOne);
         System.out.println("Part 2: Total valid result part 2: " + totalResultPartTwo);
         long end = System.currentTimeMillis();
         System.out.println("Time: " + (end - start) + " ms");
     }
 
     /**
-     * PART 1 METHODS
+     * PART 2 METHODS
      */
     public static Node createTree(long result, List<Long> values) {
         Node root = new Node(0, values.getFirst());
@@ -99,42 +94,10 @@ public class Day07 {
         return root;
     }
 
-    public static void createLowerRungs(Node root, long result, List<Long> values, int newNodeIdx) {
-        if (newNodeIdx > values.size() - 1) {
-            return;
+    public static void createLowerRungs(Node root, long result, List<Long> values, int idxToUse) {
+        if (root == null) {
+            root = new Node(0, values.getFirst());
         }
-        Node timesNode = new Node(newNodeIdx, root.val * values.get(newNodeIdx));
-        Node plusNode = new Node(newNodeIdx, root.val + values.get(newNodeIdx));
-        if (timesNode.val <= result) {
-            root.times = timesNode;
-            createLowerRungs(root.times, result, values, newNodeIdx + 1);
-        }
-        if (plusNode.val <= result) {
-            root.plus = plusNode;
-            createLowerRungs(root.plus, result, values, newNodeIdx + 1);
-        }
-    }
-
-    public static boolean treeIsValid(Node node, long result, int maxIdx) {
-        if (node == null) {
-            return false;
-        }
-        if (node.idx == maxIdx) {
-            return node.val == result;
-        }
-        return treeIsValid(node.times, result, maxIdx) || treeIsValid(node.plus, result, maxIdx);
-    }
-
-    /**
-     * PART 2 METHODS
-     */
-    public static Node createTreePartTwo(long result, List<Long> values) {
-        Node root = new Node(0, values.getFirst());
-        createLowerRungsPartTwo(root, result, values, 1);
-        return root;
-    }
-
-    public static void createLowerRungsPartTwo(Node root, long result, List<Long> values, int idxToUse) {
         if (root.isFinal) {
             return;
         }
@@ -149,28 +112,65 @@ public class Day07 {
         }
         if (timesNode.val <= result) {
             root.times = timesNode;
-            createLowerRungsPartTwo(root.times, result, values, idxToUse + 1);
+            createLowerRungs(root.times, result, values, idxToUse + 1);
         }
         if (plusNode.val <= result) {
             root.plus = plusNode;
-            createLowerRungsPartTwo(root.plus, result, values, idxToUse + 1);
+            createLowerRungs(root.plus, result, values, idxToUse + 1);
         }
         if (concatNode.val <= result) {
             root.concat = concatNode;
-            createLowerRungsPartTwo(root.concat, result, values, idxToUse + 1);
-        } else {
-            int jennifer = 9;
+            createLowerRungs(root.concat, result, values, idxToUse + 1);
         }
     }
 
-    public static boolean treeIsValidPartTwo(Node node, long result) {
+    public static boolean treeIsValid(Node node, long result, boolean includeConcatenation) {
         if (node == null) {
             return false;
         }
         if (node.isFinal) {
             return node.val == result;
         }
-        return treeIsValidPartTwo(node.times, result) || treeIsValidPartTwo(node.plus, result) || treeIsValidPartTwo(node.concat, result);
+        return treeIsValid(node.times, result, includeConcatenation)
+                || treeIsValid(node.plus, result, includeConcatenation)
+                || (includeConcatenation && treeIsValid(node.concat, result, true));
     }
 
+
+    /**
+     * Reference only: A much more concise version of what I was doing
+     * See https://github.com/mmersic/advent2024/blob/main/src/main/java/org/mersic/Day07.java
+     */
+    public static long solve(long lhs, long total, long[] rhs, int ri, int ops) {
+        if (lhs == total && rhs.length == ri) {
+            return total;
+        } else if (rhs.length == ri) {
+            return 0;
+        } else if (total > lhs) {
+            return 0;
+        } else {
+            long result = solve(lhs, total + rhs[ri], rhs, ri+1, ops);
+            if (result == lhs) {
+                return lhs;
+            }
+            result = solve(lhs, total * rhs[ri], rhs, ri+1, ops);
+            if (result == lhs) {
+                return lhs;
+            }
+            if (ops == 3) {
+                return solve(lhs, Long.parseLong(total + "" + rhs[ri]), rhs, ri + 1, ops);
+            } else {
+                return 0;
+            }
+        }
+    }
+
+//    Called in this loop:
+//    for (String line : input) {
+//        String[] S = line.split(": ");
+//        long lhs = Long.parseLong(S[0]);
+//        long[] rhs = Arrays.stream(S[1].split(" ")).mapToLong(Long::parseLong).toArray();
+//        partOne += solve(lhs, rhs[0], rhs, 1, 2);
+//        partTwo += solve(lhs, rhs[0], rhs, 1, 3);
+//    }
 }
