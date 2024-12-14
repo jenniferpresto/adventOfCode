@@ -15,7 +15,8 @@ public class Day07 {
         long val;
         Node times;
         Node plus;
-        boolean visited;
+        Node concat;
+        boolean isFinal;
 
         Node(int idx, long val) {
             this.idx = idx;
@@ -27,16 +28,14 @@ public class Day07 {
             return "Node{" +
                     "idx=" + idx +
                     ", val=" + val +
-                    ", times=" + times +
-                    ", plus=" + plus +
-                    ", visited=" + visited +
+                    ", isFinal=" + isFinal +
                     '}';
         }
     }
 
     public static void main(String[] args) {
         List<String> data = new ArrayList<>();
-        try (final Scanner scanner = new Scanner(new File("data/day07.txt"))) {
+        try (final Scanner scanner = new Scanner(new File("data/day07test.txt"))) {
             while (scanner.hasNext()) {
                 data.add(scanner.nextLine());
             }
@@ -56,22 +55,40 @@ public class Day07 {
             testValues.put(Long.parseLong(firstSplit[0]), values);
         }
 
+
+        //  Part 1 -- Tree and depth-first traversal
+        //  Part 2 -- Tree with third possibility
         long totalResult = 0L;
+        long totalResultPartTwo = 0L;
 
         for (Map.Entry<Long, List<Long>> entrySet : testValues.entrySet()) {
             long result = entrySet.getKey();
             List<Long> values = entrySet.getValue();
             Node root = createTree(result, values);
+
             if(treeIsValid(root, result, values.size() - 1)) {
                 totalResult += result;
+            }
+
+            Node rootPartTwo = createTreePartTwo(result, values);
+            if (treeIsValidPartTwo(rootPartTwo, result)) {
+                totalResultPartTwo += result;
             }
         }
 
         System.out.println("Part 1: Total valid result: " + totalResult);
+        System.out.println("Part 2: Total valid result part 2: " + totalResultPartTwo);
+
+
+//        Node root = createTreePartTwo(7290L, testValues.get(7290L));
+//        boolean isValue = treeIsValidPartTwo(root, 7290L);
+//        int jennifer = 9;
     }
 
+    /**
+     * PART 1 METHODS
+     */
     public static Node createTree(long result, List<Long> values) {
-        int idx = 0;
         Node root = new Node(0, values.getFirst());
         createLowerRungs(root, result, values, 1);
         return root;
@@ -102,4 +119,51 @@ public class Day07 {
         }
         return treeIsValid(node.times, result, maxIdx) || treeIsValid(node.plus, result, maxIdx);
     }
+
+    /**
+     * PART 2 METHODS
+     */
+    public static Node createTreePartTwo(long result, List<Long> values) {
+        Node root = new Node(0, values.getFirst());
+        createLowerRungsPartTwo(root, result, values, 1);
+        return root;
+    }
+
+    public static void createLowerRungsPartTwo(Node root, long result, List<Long> values, int idxToUse) {
+        if (root.isFinal) {
+            return;
+        }
+
+        Node timesNode = new Node(idxToUse, root.val * values.get(idxToUse));
+        Node plusNode = new Node(idxToUse, root.val + values.get(idxToUse));
+        Node concatNode = new Node(idxToUse, Long.parseLong(Long.toString(root.val) + Long.toString(values.get(idxToUse))));
+        if (idxToUse == values.size() - 1) {
+            timesNode.isFinal = true;
+            plusNode.isFinal = true;
+            concatNode.isFinal = true;
+        }
+        if (timesNode.val <= result) {
+            root.times = timesNode;
+            createLowerRungsPartTwo(root.times, result, values, idxToUse + 1);
+        }
+        if (plusNode.val <= result) {
+            root.plus = plusNode;
+            createLowerRungsPartTwo(root.plus, result, values, idxToUse + 1);
+        }
+        if (concatNode.val <= result) {
+            root.concat = concatNode;
+            createLowerRungsPartTwo(root.concat, result, values, idxToUse + 1);
+        }
+    }
+
+    public static boolean treeIsValidPartTwo(Node node, long result) {
+        if (node == null) {
+            return false;
+        }
+        if (node.isFinal) {
+            return node.val == result;
+        }
+        return treeIsValidPartTwo(node.times, result) || treeIsValidPartTwo(node.plus, result) || treeIsValidPartTwo(node.concat, result);
+    }
+
 }
