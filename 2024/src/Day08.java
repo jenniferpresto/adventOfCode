@@ -54,12 +54,16 @@ public class Day08 {
 
         Map<Character, List<Location>> antennae = new HashMap<>();
         Set<Location> antinodes = new HashSet<>();
+        Set<Location> antinodesWithResonance = new HashSet<>();
+
+        final int mapWidth = data.getFirst().length();
+        final int mapHeight = data.size();
 
         for (int y = 0; y < data.size(); y++) {
             for (int x = 0; x < data.get(y).length(); x++) {
                 char c = data.get(y).charAt(x);
                 if (c != '.' && c != '#') {
-                    List<Location> locations = antennae.getOrDefault(c, new ArrayList<Location>());
+                    List<Location> locations = antennae.getOrDefault(c, new ArrayList<>());
                     locations.add(new Location(x, y));
                     antennae.put(c, locations);
                 }
@@ -77,20 +81,26 @@ public class Day08 {
                     Location loc1 = locations.get(i);
                     Location loc2 = locations.get(j);
 
+                    //  Part 1
                     Location antinode1 = getAntinode(loc1, loc2);
                     Location antinode2 = getAntinode(loc2, loc1);
-                    if (locationIsOnMap(antinode1, data.getFirst().length(), data.size())) {
+                    if (locationIsOnMap(antinode1, mapWidth, mapHeight)) {
                         antinodes.add(antinode1);
                     }
-                    if (locationIsOnMap(antinode2, data.getFirst().length(), data.size())) {
+                    if (locationIsOnMap(antinode2, mapWidth, mapHeight)) {
                         antinodes.add(antinode2);
                     }
+
+                    //  Part 2
+                    List<Location> antinodesFromLocations = getAllAntinodesOnMap(loc1, loc2, mapWidth, mapHeight);
+                    antinodesWithResonance.addAll(antinodesFromLocations);
+
                 }
             }
         }
-        
+
         System.out.println("There are " + antinodes.size() + " antinodes");
-        int jennifer = 0;
+        System.out.println("There are " + antinodesWithResonance.size() + " antinodes with resonance");
 
     }
 
@@ -100,7 +110,47 @@ public class Day08 {
         return new Location(x, y);
     }
 
+    public static List<Location> getAllAntinodesOnMap(final Location loc1, final Location loc2, final int width, final int height) {
+        List<Location> locations = new ArrayList<>();
+        locations.add(loc1);
+        locations.add(loc2);
+        final int xDist = loc1.x - loc2.x;
+        final int yDist = loc1.y - loc2.y;
+
+        int currentX = loc1.x;
+        int currentY = loc1.y;
+        while(true) {
+            currentX -= xDist;
+            currentY -= yDist;
+
+            if (coordinatesAreOnMap(currentX, currentY, width, height)) {
+                locations.add(new Location(currentX, currentY));
+            } else {
+                break;
+            }
+        }
+
+        currentX = loc1.x;
+        currentY = loc1.y;
+        while(true) {
+            currentX += xDist;
+            currentY += yDist;
+
+            if (coordinatesAreOnMap(currentX, currentY, width, height)) {
+                locations.add(new Location(currentX, currentY));
+            } else {
+                break;
+            }
+        }
+        return locations;
+    }
+
     public static boolean locationIsOnMap(final Location loc, final int width, final int height) {
         return loc.x >= 0 && loc.x < width && loc.y >= 0 && loc.y < height;
     }
+
+    public static boolean coordinatesAreOnMap(final int x, final int y, final int width, final int height) {
+        return x >= 0 && x < width && y >= 0 && y < height;
+    }
+
 }
